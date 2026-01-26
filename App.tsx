@@ -5,11 +5,14 @@ import { MOCK_JOBS, MOCK_CANDIDATES } from './constants';
 import SwipeCard from './components/SwipeCard';
 import JobCard from './components/JobCard';
 import CandidateCard from './components/CandidateCard';
+import AuthForm from './components/AuthForm';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Users, Briefcase, RefreshCcw, Heart, X, CheckCircle2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [role, setRole] = useState<UserRole>(UserRole.NONE);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<{ email: string; name?: string } | null>(null);
   const [jobs, setJobs] = useState<Job[]>(MOCK_JOBS);
   const [candidates, setCandidates] = useState<Candidate[]>(MOCK_CANDIDATES);
   const [history, setHistory] = useState<any[]>([]);
@@ -17,6 +20,16 @@ const App: React.FC = () => {
 
   const handleRoleSelection = (selectedRole: UserRole) => {
     setRole(selectedRole);
+  };
+
+  const handleAuthSuccess = (userData: { email: string; name?: string }) => {
+    setUser(userData);
+    setIsAuthenticated(true);
+  };
+
+  const handleBackToRoles = () => {
+    setRole(UserRole.NONE);
+    setIsAuthenticated(false);
   };
 
   const handleSwipe = useCallback((direction: 'left' | 'right', id: string) => {
@@ -49,6 +62,7 @@ const App: React.FC = () => {
     else setCandidates(MOCK_CANDIDATES);
   };
 
+  // Flow Step 1: Role Selection
   if (role === UserRole.NONE) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
@@ -84,6 +98,20 @@ const App: React.FC = () => {
     );
   }
 
+  // Flow Step 2: Authentication (Required for Seekers as requested)
+  if (!isAuthenticated && (role === UserRole.SEEKER || role === UserRole.RECRUITER)) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+        <AuthForm 
+          role={role as 'SEEKER' | 'RECRUITER'} 
+          onSuccess={handleAuthSuccess} 
+          onBack={handleBackToRoles} 
+        />
+      </div>
+    );
+  }
+
+  // Flow Step 3: Main Swiping View
   const stackSize = role === UserRole.SEEKER ? jobs.length : candidates.length;
 
   return (
@@ -91,13 +119,23 @@ const App: React.FC = () => {
       {/* Header */}
       <header className="p-6 flex items-center justify-between z-50">
         <button 
-          onClick={() => setRole(UserRole.NONE)}
+          onClick={() => {
+            setRole(UserRole.NONE);
+            setIsAuthenticated(false);
+          }}
           className="text-white/40 hover:text-white transition-colors"
         >
           <X size={28} />
         </button>
-        <h1 className="text-2xl font-black text-white tracking-tighter">KERGOX</h1>
-        <div className="w-7" /> {/* Spacer */}
+        <div className="flex flex-col items-center">
+          <h1 className="text-2xl font-black text-white tracking-tighter">KERGOX</h1>
+          <p className="text-[10px] text-white/30 uppercase tracking-[0.2em]">
+            {role === UserRole.SEEKER ? 'Discover Jobs' : 'Discover Talent'}
+          </p>
+        </div>
+        <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+          <img src={`https://ui-avatars.com/api/?name=${user?.name || 'User'}&background=1A1A1A&color=fff`} alt="Profile" />
+        </div>
       </header>
 
       {/* Main Swipe Area */}
@@ -174,6 +212,7 @@ const App: React.FC = () => {
           <Heart size={40} fill="currentColor" />
         </button>
         <button 
+          onClick={resetStack}
           className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 hover:bg-blue-500/20 transition-all active:scale-90"
         >
           <RefreshCcw size={32} />
