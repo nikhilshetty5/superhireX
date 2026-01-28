@@ -15,14 +15,14 @@ export const getAIRecommendation = async (
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: prompt,
+      contents: [{ parts: [{ text: prompt }] }],
       config: {
         maxOutputTokens: 100,
         temperature: 0.7,
       },
     });
 
-    return response.text?.trim() || "Top recommendation based on your profile.";
+    return response.text || "Top recommendation based on your profile.";
   } catch (error) {
     console.error("Gemini Error:", error);
     return "AI insights currently unavailable.";
@@ -33,10 +33,12 @@ export const parseResume = async (base64Resume: string) => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: [
-        { text: "Extract Name, Title, and top 3 Skills from this resume text/data." },
-        { inlineData: { mimeType: "application/pdf", data: base64Resume } }
-      ],
+      contents: { 
+        parts: [
+          { text: "Extract Name, Title, and top 3 Skills from this resume text/data." },
+          { inlineData: { mimeType: "application/pdf", data: base64Resume } }
+        ] 
+      },
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -50,7 +52,8 @@ export const parseResume = async (base64Resume: string) => {
         }
       }
     });
-    return JSON.parse(response.text);
+    const text = response.text;
+    return text ? JSON.parse(text) : null;
   } catch (error) {
     console.error("Parse Resume Error:", error);
     return null;
