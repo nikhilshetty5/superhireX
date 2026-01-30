@@ -116,7 +116,7 @@ const App: React.FC = () => {
       return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
-            <h1 className="text-6xl font-black text-white tracking-tighter mb-4 italic">SUPERHIREX</h1>
+            <h1 className="text-7xl font-black text-white tracking-widest drop-shadow-[0_0_25px_rgba(0,255,200,0.5)]">SUPERHIREX</h1>
             <p className="text-white/50 text-xl max-w-xs mx-auto">The swipe-to-work evolution.</p>
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
