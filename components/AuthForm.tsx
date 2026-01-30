@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User, ArrowRight, ChevronLeft, ShieldCheck, AlertCircle, Building2, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, User, ChevronLeft, ShieldCheck, AlertCircle, Building2, CheckCircle2 } from 'lucide-react';
 import { authService } from '../services/authService';
 
 interface AuthFormProps {
-  onSuccess: (userData: { email: string; name?: string }) => void;
+  onSuccess: () => void;
   onBack: () => void;
   role: 'SEEKER' | 'RECRUITER';
 }
@@ -49,8 +49,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, onBack, role }) => {
     try {
       await authService.requestOTP(email);
       setStep('verifying');
-    } catch (err) {
-      setError('Failed to send verification code.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to send verification code.');
     } finally {
       setLoading(false);
     }
@@ -62,11 +62,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, onBack, role }) => {
 
     setLoading(true);
     try {
-      const session = await authService.verifyOTP(email, code, role, isLogin ? undefined : name);
-      setIsVerified(true);
-      setTimeout(() => {
-        onSuccess(session);
-      }, 800);
+      const user = await authService.verifyOTP(email, code, role, isLogin ? undefined : name);
+      if (user) {
+        setIsVerified(true);
+        setTimeout(() => onSuccess(), 800);
+      }
     } catch (err: any) {
       setError(err.message || 'Verification failed');
     } finally {
@@ -94,7 +94,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, onBack, role }) => {
         {step === 'credentials' ? (
           <motion.div key="credentials" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
             <div className="mb-10">
-              <h2 className="text-3xl font-bold text-white mb-2">{isLogin ? 'Welcome back' : 'Join SuperHireX'}</h2>
+              <h2 className="text-3xl font-bold text-white mb-2 italic uppercase">
+                {isLogin ? 'Welcome back' : 'Join SuperHireX'}
+              </h2>
               <p className="text-white/40 text-sm">
                 {role === 'SEEKER' ? 'Ready to find your next adventure?' : 'Let\'s build your dream team.'}
               </p>
@@ -111,13 +113,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, onBack, role }) => {
                 {role === 'RECRUITER' ? <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={20} /> : <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={20} />}
                 <input type="email" placeholder={role === 'RECRUITER' ? 'Work Email' : 'Email Address'} required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-white/40 transition-colors" />
               </div>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={20} />
-                <input type="password" placeholder="Password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-black border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-white/40 transition-colors" />
-              </div>
               {error && <div className="text-red-400 text-xs flex items-center gap-2 px-2"><AlertCircle size={14} />{error}</div>}
               <button type="submit" disabled={loading} className="w-full bg-white text-black font-black py-4 rounded-2xl hover:bg-white/90 active:scale-95 transition-all disabled:opacity-50">
-                {loading ? 'Sending...' : isLogin ? 'Sign In' : 'Sign Up'}
+                {loading ? 'Sending Code...' : isLogin ? 'Sign In' : 'Sign Up'}
               </button>
             </form>
             <button onClick={() => setIsLogin(!isLogin)} className="w-full mt-6 text-sm text-white/30 hover:text-white transition-colors">
@@ -134,7 +132,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, onBack, role }) => {
               <p className="text-white/40 text-sm">Enter the code sent to your inbox.</p>
             </div>
             <form onSubmit={handleVerify} className="space-y-6">
-              <input type="text" maxLength={4} placeholder="0000" disabled={isVerified} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} className="w-40 bg-black border border-white/10 rounded-2xl py-5 text-center text-3xl font-mono tracking-[0.4em] text-white focus:outline-none focus:border-blue-500 transition-all" />
+              <input type="text" maxLength={6} placeholder="000000" disabled={isVerified} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} className="w-full bg-black border border-white/10 rounded-2xl py-5 text-center text-4xl font-mono tracking-[0.2em] text-white focus:outline-none focus:border-blue-500 transition-all" />
               {error && <p className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={loading || code.length < 4 || isVerified} className={`w-full font-black py-4 rounded-2xl transition-all ${isVerified ? 'bg-green-500 text-white' : 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'}`}>
                 {loading ? 'Verifying...' : isVerified ? 'Verified' : 'Confirm'}

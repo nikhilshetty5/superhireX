@@ -1,5 +1,6 @@
 
 import { supabase } from '../lib/supabase';
+import { User } from '@supabase/supabase-js';
 
 export interface UserSession {
   email: string;
@@ -10,8 +11,9 @@ export interface UserSession {
 }
 
 class AuthService {
-  private session: UserSession | null = null;
-
+  /**
+   * 1. User enters email - Request OTP
+   */
   async requestOTP(email: string): Promise<void> {
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -21,64 +23,65 @@ class AuthService {
     });
 
     if (error) {
-      console.error('Supabase Auth Error:', error.message);
-      // Fallback for demo purposes if keys aren't set
-      if (email === 'demo@superhirex.com' || email === 'demo@kergox.com') {
-        console.log('%c[Demo Mode] OTP Requested for SuperHireX demo (Code: 1234)', 'color: #3b82f6');
+      // Fallback for demo/testing if Supabase isn't configured yet
+      if (email.includes('demo@superhirex.com')) {
+        console.log('%c[Demo Mode] OTP: 1234', 'color: #3b82f6; font-weight: bold;');
         return;
       }
       throw error;
     }
   }
 
-  async verifyOTP(email: string, code: string, role: 'SEEKER' | 'RECRUITER', name?: string): Promise<UserSession> {
+  /**
+   * 2. User enters OTP - Verify and get session
+   */
+  async verifyOTP(email: string, code: string, role: 'SEEKER' | 'RECRUITER', name?: string): Promise<User | null> {
     const { data, error } = await supabase.auth.verifyOtp({
       email,
       token: code,
-      type: 'signup',
+      type: 'email',
     });
 
     if (error) {
-      // Demo logic
-      if ((email === 'demo@superhirex.com' || email === 'demo@kergox.com') && code === '1234') {
-        this.session = { email, name: name || 'Demo User', role, isVerified: true, userId: 'demo-user-id' };
-        return this.session;
+      // Demo fallback logic
+      if (email.includes('demo@superhirex.com') && code === '1234') {
+        return { id: 'demo-user-id', email } as User;
       }
       throw error;
     }
 
     if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({ 
-          id: data.user.id, 
-          full_name: name, 
-          role: role 
-        });
-
-      if (profileError) console.error('Profile Update Error:', profileError);
-
-      this.session = {
-        email: data.user.email!,
-        name: name,
+      // 3. Update profile with role and name in the background
+      await supabase.from('profiles').upsert({
+        id: data.user.id,
+        full_name: name,
         role: role,
-        isVerified: true,
-        userId: data.user.id
-      };
-      
-      return this.session;
+        updated_at: new Date().toISOString(),
+      });
+      return data.user;
     }
 
-    throw new Error('Verification failed');
+    return null;
   }
 
-  getCurrentSession(): UserSession | null {
-    return this.session;
-  }
-
+  /**
+   * Logout helper
+   */
   async logout() {
     await supabase.auth.signOut();
-    this.session = null;
+  }
+
+  /**
+   * Fetch profile data for a specific user ID
+   */
+  async getUserProfile(userId: string) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    return data;
   }
 }
 

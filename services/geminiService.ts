@@ -2,7 +2,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Job, Candidate } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Initialize GoogleGenAI with API_KEY obtained directly from process.env.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const getAIRecommendation = async (
   target: Job | Candidate,
@@ -13,15 +14,18 @@ export const getAIRecommendation = async (
       ? `Analyze this job posting: ${JSON.stringify(target)}. Provide a brief 1-sentence "Why it matches" based on a generic senior software engineer profile.`
       : `Analyze this candidate: ${JSON.stringify(target)}. Provide a brief 1-sentence "Why they are a good fit" for a technical startup.`;
 
-    const response = await ai.models.generateContent({
+    // Create a new instance right before making an API call as per best practices.
+    const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const response = await genAI.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: prompt,
       config: {
-        maxOutputTokens: 100,
+        // Removed maxOutputTokens to avoid reaching limit without thinkingBudget.
         temperature: 0.7,
       },
     });
 
+    // Access the .text property directly from the response object.
     return response.text || "Top recommendation based on your profile.";
   } catch (error) {
     console.error("Gemini Error:", error);
@@ -31,7 +35,8 @@ export const getAIRecommendation = async (
 
 export const parseResume = async (base64Resume: string) => {
   try {
-    const response = await ai.models.generateContent({
+    const genAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const response = await genAI.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: { 
         parts: [
@@ -48,10 +53,12 @@ export const parseResume = async (base64Resume: string) => {
             title: { type: Type.STRING },
             skills: { type: Type.ARRAY, items: { type: Type.STRING } }
           },
-          required: ["name", "title", "skills"]
+          // Using propertyOrdering instead of required as per @google/genai guidelines.
+          propertyOrdering: ["name", "title", "skills"]
         }
       }
     });
+    // Access the .text property directly.
     const text = response.text;
     return text ? JSON.parse(text) : null;
   } catch (error) {
