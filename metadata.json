@@ -1,5 +1,5 @@
 {
-  "name": "Kergox - JobSwipe",
+  "name": "SuperHireX - JobSwipe",
   "description": "A Tinder-style job swiping application for Job Seekers and Recruiters with AI-powered recommendations using Gemini.",
   "requestFramePermissions": [
     "camera"

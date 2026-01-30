@@ -27,13 +27,13 @@ export const MOCK_JOBS: Job[] = [
   {
     id: 'j3',
     title: 'Fullstack Developer',
-    company: 'Kergox',
+    company: 'SuperHireX',
     location: 'Hybrid',
     salary: '$130k - $170k',
     description: 'Help us scale the next generation of job matching platforms.',
     requirements: ['Node.js', 'PostgreSQL', 'React'],
     postedAt: '1d ago',
-    logo: 'https://picsum.photos/seed/kergox/100/100'
+    logo: 'https://picsum.photos/seed/superhirex/100/100'
   }
 ];
 
