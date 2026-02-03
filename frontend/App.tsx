@@ -5,6 +5,7 @@ import SwipeCard from './components/SwipeCard';
 import JobCard from './components/JobCard';
 import CandidateCard from './components/CandidateCard';
 import AuthForm from './components/AuthForm';
+import ResumeUpload from './components/ResumeUpload';
 import { authService } from './services/authService';
 import { dataService } from './services/dataService';
 import { swipeService } from './services/swipeService';
@@ -13,94 +14,174 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Users, Briefcase, RefreshCcw, Heart, X, CheckCircle2, LogOut } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 
+// 🧪 DEMO MODE - Disable auth for testing AI parsing
+const DEMO_MODE = false;
+const DEMO_USER_ID = 'demo-test-user-' + Date.now();
+const DEMO_USER_EMAIL = 'demo@test.superhirex.com';
+
 const App: React.FC = () => {
-  const [role, setRole] = useState<UserRole>(UserRole.NONE);
+  // MVP: Only Job Seeker role
+  const role = UserRole.SEEKER;
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMatch, setShowMatch] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showResumeUpload, setShowResumeUpload] = useState(false);
+  const [resumeUploaded, setResumeUploaded] = useState(false);
+
+  console.log('App component loaded. Current state (MVP - Seekers Only):', { user, loading, error });
 
   /**
    * STEP D — Global Auth State Listener (CRITICAL)
    */
   useEffect(() => {
-    // Initial check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    if (DEMO_MODE) {
+      console.log('🧪 DEMO MODE - Skipping Supabase auth');
+      // Auto-login with demo user
+      setUser({ 
+        id: DEMO_USER_ID, 
+        email: DEMO_USER_EMAIL 
+      } as User);
+      setProfile({ 
+        id: DEMO_USER_ID,
+        user_id: DEMO_USER_ID,
+        full_name: 'Demo User', 
+        email: DEMO_USER_EMAIL, 
+        role: 'SEEKER',
+        has_resume: false
+      });
+      setShowResumeUpload(true);
       setLoading(false);
-    });
+      return;
+    }
+    
+    console.log('Auth effect starting...');
+    
+    try {
+      // Initial check
+      supabase.auth.getSession()
+        .then(({ data: { session } }) => {
+          console.log('Session check result:', session ? 'logged in' : 'not logged in');
+          setUser(session?.user ?? null);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error('Auth session error:', err);
+          setError(err?.message || 'Auth error');
+          setLoading(false);
+        });
 
-    // Listen for changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+      // Listen for changes (login, logout, token refresh)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        console.log('Auth state changed:', _event);
+        setUser(session?.user ?? null);
+      });
 
-    return () => subscription.unsubscribe();
+      return () => {
+        console.log('Unsubscribing from auth changes');
+        subscription?.unsubscribe();
+      };
+    } catch (error) {
+      console.error('Supabase initialization error:', error);
+      setError(String(error));
+      setLoading(false);
+    }
   }, []);
 
   // Fetch profile when user is authenticated
   useEffect(() => {
     if (user) {
+      // For MVP, only seekers - fetch profile
       authService.getUserProfile(user.id).then(data => {
         if (data) {
           setProfile(data);
-          setRole(data.role as UserRole);
+          // Show resume upload if user doesn't have a resume yet
+          const hasResume = data?.has_resume === true;
+          setResumeUploaded(hasResume);
+          
+          // If no resume, show upload screen
+          if (!hasResume) {
+            console.log('No resume found, showing upload screen');
+            setShowResumeUpload(true);
+          } else {
+            console.log('Resume found, going to job feed');
+            setShowResumeUpload(false);
+          }
         }
+      }).catch(err => {
+        console.error('Error fetching profile:', err);
+        // Default to showing upload screen if fetch fails
+        setShowResumeUpload(true);
       });
-    } else {
-      setProfile(null);
-      // Don't reset role immediately to allow role selection screen to show
     }
   }, [user]);
 
-  // Load stack data based on role
+  // Load jobs for seekers
   const loadData = useCallback(async () => {
-    if (role === UserRole.NONE || !user) return;
+    if (!user) return;
     
     setLoading(true);
-    if (role === UserRole.SEEKER) {
-      const data = await dataService.getJobs();
-      setJobs(data);
-    } else if (role === UserRole.RECRUITER) {
-      const data = await dataService.getCandidates();
-      setCandidates(data);
-    }
+    const data = await dataService.getJobs();
+    setJobs(data);
     setLoading(false);
-  }, [role, user]);
+  }, [user]);
 
   useEffect(() => {
-    if (user && role !== UserRole.NONE) {
+    if (user) {
       loadData();
     }
-  }, [user, role, loadData]);
+  }, [user, loadData]);
 
   const handleLogout = async () => {
     await authService.logout();
-    setRole(UserRole.NONE);
     setJobs([]);
-    setCandidates([]);
   };
 
   const handleSwipe = useCallback(async (direction: 'left' | 'right', id: string) => {
     if (!user) return;
 
-    if (role === UserRole.SEEKER) setJobs(prev => prev.filter(j => j.id !== id));
-    else setCandidates(prev => prev.filter(c => c.id !== id));
+    setJobs(prev => prev.filter(j => j.id !== id));
 
-    const { isMatch } = await swipeService.recordSwipe(user.id, id, direction);
+    const { isMatch } = await swipeService.recordSwipe(user.id, id, direction, 'job');
     
     if (isMatch) {
       setShowMatch(true);
       setTimeout(() => setShowMatch(false), 3000);
     }
-  }, [role, user]);
+  }, [user]);
 
   const resetStack = () => {
     dataService.refresh();
     loadData();
   };
+
+  // Show resume upload FIRST (before loading spinner)
+  if (user && showResumeUpload) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+        <ResumeUpload
+          userId={user.id}
+          userEmail={user.email}
+          onSuccess={(data) => {
+            setResumeUploaded(true);
+            setShowResumeUpload(false);
+            // Fetch updated profile after creation
+            authService.getUserProfile(user.id).then(profileData => {
+              if (profileData) {
+                setProfile(profileData);
+              }
+            });
+          }}
+          onSkip={() => {
+            setShowResumeUpload(false);
+            setResumeUploaded(true);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -110,39 +191,64 @@ const App: React.FC = () => {
     );
   }
 
-  // Identity logic: if no user, show role selection or auth
-  if (!user) {
-    if (role === UserRole.NONE) {
-      return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
-            <h1 className="text-7xl font-black text-white tracking-widest drop-shadow-[0_0_25px_rgba(0,255,200,0.5)]">SUPERHIREX</h1>
-            <p className="text-white/50 text-xl max-w-xs mx-auto">The swipe-to-work evolution.</p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
-            <button onClick={() => setRole(UserRole.SEEKER)} className="group p-12 bg-[#1A1A1A] border border-white/10 rounded-[2.5rem] hover:border-blue-500/50 transition-all active:scale-95 text-center">
-              <Briefcase size={48} className="text-blue-500 mb-4 mx-auto group-hover:scale-110 transition-transform" />
-              <h2 className="text-2xl font-bold text-white mb-2">Job Seeker</h2>
-              <p className="text-white/40 text-sm">Find your next career move.</p>
-            </button>
-            <button onClick={() => setRole(UserRole.RECRUITER)} className="group p-12 bg-[#1A1A1A] border border-white/10 rounded-[2.5rem] hover:border-purple-500/50 transition-all active:scale-95 text-center">
-              <Users size={48} className="text-purple-500 mb-4 mx-auto group-hover:scale-110 transition-transform" />
-              <h2 className="text-2xl font-bold text-white mb-2">Recruiter</h2>
-              <p className="text-white/40 text-sm">Discover top talent.</p>
-            </button>
-          </div>
-        </div>
-      );
-    }
-
+  if (error) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
-        <AuthForm role={role as 'SEEKER' | 'RECRUITER'} onSuccess={() => {}} onBack={() => setRole(UserRole.NONE)} />
+      <div className="min-h-screen bg-black flex items-center justify-center p-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-500 mb-4">Error</h1>
+          <p className="text-white/60 mb-8">{error}</p>
+          <p className="text-white/40 text-sm mb-8">Check browser console (F12) for more details</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-white text-black font-bold rounded-lg hover:bg-white/90 transition-all"
+          >
+            Reload
+          </button>
+        </div>
       </div>
     );
   }
 
-  const stack = role === UserRole.SEEKER ? jobs : candidates;
+  // Identity logic: if no user, show signup (no role selection for MVP)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
+          <h1 className="text-7xl font-black text-white tracking-widest drop-shadow-[0_0_25px_rgba(0,255,200,0.5)]">SUPERHIREX</h1>
+          <p className="text-white/50 text-xl max-w-xs mx-auto">The swipe-to-work evolution.</p>
+        </motion.div>
+        <AuthForm role="SEEKER" onSuccess={() => {}} onBack={() => {}} />
+      </div>
+    );
+  }
+
+  // Show resume upload for job seekers immediately after login
+  if (user && showResumeUpload) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+        <ResumeUpload
+          userId={user.id}
+          userEmail={user.email}
+          onSuccess={(data) => {
+            setResumeUploaded(true);
+            setShowResumeUpload(false);
+            // Fetch updated profile after creation
+            authService.getUserProfile(user.id).then(profileData => {
+              if (profileData) {
+                setProfile(profileData);
+              }
+            });
+          }}
+          onSkip={() => {
+            setShowResumeUpload(false);
+            setResumeUploaded(true);
+          }}
+        />
+      </div>
+    );
+  }
+
+  const stack = jobs;
 
   return (
     <div className="h-screen bg-black overflow-hidden relative flex flex-col">
@@ -152,9 +258,7 @@ const App: React.FC = () => {
         </button>
         <div className="flex flex-col items-center">
           <h1 className="text-2xl font-black text-white tracking-tighter italic uppercase">SUPERHIREX</h1>
-          <span className="text-[9px] text-blue-500 font-bold uppercase tracking-[0.3em]">
-            {role === UserRole.SEEKER ? 'Seeker Mode' : 'Recruiter Mode'}
-          </span>
+          <span className="text-[9px] text-blue-500 font-bold uppercase tracking-[0.3em]">MVP - Job Seekers</span>
         </div>
         <div className="w-10 h-10 rounded-full border-2 border-white/10 p-0.5 overflow-hidden">
           <img className="w-full h-full rounded-full object-cover" src={`https://ui-avatars.com/api/?name=${profile?.full_name || user.email}&background=3b82f6&color=fff`} alt="Profile" />
@@ -169,9 +273,9 @@ const App: React.FC = () => {
                 key={item.id} 
                 onSwipeLeft={() => handleSwipe('left', item.id)}
                 onSwipeRight={() => handleSwipe('right', item.id)}
-                rightLabel={role === UserRole.SEEKER ? "APPLY" : "INTERVIEW"}
+                rightLabel="APPLY"
               >
-                {role === UserRole.SEEKER ? <JobCard job={item as Job} /> : <CandidateCard candidate={item as Candidate} />}
+                <JobCard job={item as Job} />
               </SwipeCard>
             ))
           ) : (

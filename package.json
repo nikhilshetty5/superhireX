@@ -1,25 +1,26 @@
 {
-  "name": "superhirex---jobswipe",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "superhirex_complete",
+  "version": "1.0.0",
+  "description": "A modern, mobile-first job matching platform that revolutionizes hiring through intuitive swipe-based interactions.",
+  "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
   "dependencies": {
-    "react-dom": "^19.2.3",
-    "lucide-react": "^0.563.0",
-    "react": "^19.2.3",
-    "framer-motion": "^12.29.2",
-    "@google/genai": "^1.38.0",
-    "@supabase/supabase-js": "^2.45.4"
+    "express": "^5.2.1",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "vite": "^7.3.1"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@vitejs/plugin-react": "^5.1.2",
+    "typescript": "^5.9.3"
   }
 }

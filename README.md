@@ -1,208 +1,421 @@
-# SuperHireX - The Swipe-to-Work Evolution
+# 🎯 SuperhireX - Job Seeker MVP
 
-A modern, Tinder-like job matching platform that revolutionizes how job seekers find opportunities and recruiters discover talent. Built with React, TypeScript, and powered by Supabase and Google Generative AI.
+**Status**: ✅ **Ready for Testing & Deployment**
 
-## 🚀 Features
+A swipe-based job matching platform with AI-powered resume parsing. Built with React, FastAPI, and Supabase.
 
-### For Job Seekers
-- **Swipe-Based Job Discovery**: Effortlessly browse job listings with intuitive left/right swipe gestures
-- **Smart Matching**: AI-powered job recommendations tailored to your profile
-- **Real-Time Notifications**: Get instant alerts when both you and an employer express mutual interest
-- **Detailed Job Cards**: View comprehensive job information including salary, requirements, and company details
+---
 
-### For Recruiters
-- **Talent Discovery**: Browse candidate profiles with an intuitive card-based interface
-- **Quick Assessment**: Swipe left to pass or right to express interest for interviews
-- **Mutual Matching**: Automatic match notifications when candidates are also interested
-- **Profile Analytics**: Access candidate profiles with skills, experience, and portfolio links
+## 🚀 Quick Start (5 Minutes)
 
-### General Features
-- **Dual-Mode Authentication**: Separate auth flows for job seekers and recruiters
-- **Real-Time Notifications**: Instant match alerts with smooth animations
-- **Demo Mode**: Works without backend connection for demo purposes
-- **Responsive Design**: Fully optimized for desktop and mobile devices
-- **Dark Theme UI**: Modern, sleek interface with smooth animations
+### 1. Start Backend
+```bash
+cd backend
+python server.py
+```
+✅ Backend running at `http://localhost:8001`
 
-## 🛠️ Tech Stack
+### 2. Start Frontend
+```bash
+npm run dev
+```
+✅ Frontend running at `http://localhost:5175`
 
-- **Frontend Framework**: React 19 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **Backend**: Supabase (PostgreSQL database + Auth)
-- **AI/ML**: Google Generative AI (@google/genai)
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **Authentication**: Supabase Auth
+### 3. Upload Sample Jobs
+```bash
+curl -X POST http://localhost:8001/api/admin/jobs/bulk-upload \
+  -H "admin-key: admin-key-default" \
+  -F "file=@sample_jobs.csv"
+```
+✅ 15 sample jobs uploaded
+
+### 4. Test Signup
+1. Visit `http://localhost:5175`
+2. Enter any email → Click "Sign In"
+3. Verify OTP from magic link
+4. Upload resume (PDF or DOCX)
+5. Wait for AI parsing (10-20s)
+6. Click "Confirm & Continue"
+7. **See job feed!** Start swiping
+
+---
+
+## 📋 Architecture
+
+### Tech Stack
+- **Frontend**: React 19 + TypeScript, Vite, Tailwind CSS, Framer Motion
+- **Backend**: FastAPI, Python 3.14, Uvicorn
+- **Database**: Supabase PostgreSQL with Row Level Security
+- **AI**: OpenAI API (via Emergent LLM)
+- **Storage**: Supabase Storage for resumes
+- **Auth**: Supabase Email OTP
+
+### User Flow
+```
+Email Signup → Verify OTP → Upload Resume → AI Parse Resume → 
+Profile Created → Job Feed → Swipe Left/Right → Match Detected
+```
+
+### Job Ranking Algorithm
+- **Heuristic Matching**: Skills overlap calculation (FREE)
+- **Future**: AI-powered matching (optional premium feature)
+
+---
+
+## 📊 Database Schema
+
+### Core Tables
+1. **profiles** - User accounts (seekers + recruiters)
+2. **seeker_profiles** - Resume data + parsed skills
+3. **resumes** - Uploaded resume files
+4. **jobs** - Job listings
+5. **swipes** - Swipe actions (immutable)
+6. **matches** - Mutual interest matches
+
+All tables have Row Level Security (RLS) enabled.
+
+---
+
+## 🔌 API Endpoints
+
+### Admin (No Auth Required)
+- `POST /api/admin/jobs/bulk-upload` - Upload jobs via CSV
+
+### Public (No Auth Required)
+- `POST /api/check-email` - Check if email has existing profile
+- `GET /api/health` - Health check
+
+### Authenticated (User Token Required)
+- `POST /api/auth/profile` - Create user profile
+- `POST /api/resume/upload` - Upload resume file
+- `POST /api/resume/parse` - Parse resume with AI
+- `GET /api/jobs` - Get job feed (skill-ranked)
+- `POST /api/swipe` - Record left/right swipe
+- `GET /api/matches` - Get mutual matches
+
+---
+
+## 📝 CSV Format for Jobs
+
+Upload jobs using CSV file:
+
+```csv
+title,company,location,salary,description,requirements
+Senior Python Developer,TechCorp,San Francisco,"$120k-150k","Build FastAPI backend APIs","Python,FastAPI,PostgreSQL,Docker"
+Full-Stack Engineer,WebStudio,Remote,"$100k-130k","React and Node.js apps","JavaScript,React,Node.js,REST"
+```
+
+**Columns** (all required except salary):
+- `title` - Job title
+- `company` - Company name
+- `location` - Job location
+- `salary` - Salary range (optional, use empty string if N/A)
+- `description` - Full job description
+- `requirements` - Skills (comma-separated, e.g., "Python,AWS,FastAPI")
+
+See `sample_jobs.csv` for complete example with 15 sample jobs.
+
+### Upload Command
+```bash
+curl -X POST http://localhost:8001/api/admin/jobs/bulk-upload \
+  -H "admin-key: admin-key-default" \
+  -F "file=@your_jobs.csv"
+```
+
+**Response:**
+```json
+{
+  "uploaded": 15,
+  "failed": 0,
+  "jobs": [...],
+  "errors": null
+}
+```
+
+---
+
+## ⚙️ Configuration
+
+### Backend `.env`
+```env
+# Admin authentication
+ADMIN_KEY=admin-key-default
+
+# Supabase (already configured)
+SUPABASE_URL=https://bicdhlzwtmrgppvoveqh.supabase.co
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_KEY=your_service_key
+
+# OpenAI (Emergent LLM)
+OPENAI_API_KEY=sk-emergent-...
+OPENAI_BASE_URL=https://api.emergent.ai/v1
+
+# Application
+ENVIRONMENT=development
+BACKEND_PORT=8001
+```
+
+### Frontend `.env`
+```env
+VITE_BACKEND_URL=http://localhost:8001
+VITE_SUPABASE_URL=https://bicdhlzwtmrgppvoveqh.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_key
+```
+
+---
+
+## 🧪 Testing Checklist
+
+### Frontend
+- [ ] Frontend loads at `http://localhost:5175`
+- [ ] Signup page visible (no recruiter option)
+- [ ] Email verification works
+- [ ] Resume upload accepts PDF/DOCX
+- [ ] AI parsing displays results
+- [ ] Job feed loads
+- [ ] Left/right swipe works
+- [ ] Logout works
+
+### Backend
+- [ ] `python server.py` starts without errors
+- [ ] `/api/health` returns 200
+- [ ] `/api/admin/jobs/bulk-upload` works with admin key
+- [ ] Jobs appear in database
+- [ ] `/api/jobs` returns job list
+
+### Database
+- [ ] Jobs uploaded successfully
+- [ ] User profile created on signup
+- [ ] Resume file stored in Supabase Storage
+- [ ] Parsed resume data saved
+
+---
+
+## 🐛 Troubleshooting
+
+### "End of the line" - No jobs showing
+**Solution:**
+```bash
+# 1. Upload jobs
+curl -X POST http://localhost:8001/api/admin/jobs/bulk-upload \
+  -H "admin-key: admin-key-default" \
+  -F "file=@sample_jobs.csv"
+
+# 2. Click "Refresh Data" button in app
+# 3. Verify in Supabase: SELECT COUNT(*) FROM jobs WHERE status = 'active';
+```
+
+### Resume parsing failed or takes too long
+**Solution:**
+- Try PDF format instead of DOCX
+- Ensure file is < 10MB
+- Check backend logs: `cd backend && python server.py`
+- Parsing takes 10-20 seconds - this is normal
+
+### "Welcome Back" shows on new email
+**This is correct behavior** - email already has a profile from previous signup. Use a different email or click "Sign In" to login.
+
+### Admin key not working
+**Solution:**
+- Verify `.env` has: `ADMIN_KEY=admin-key-default`
+- Restart backend after changing `.env`
+- Check header is exactly: `-H "admin-key: admin-key-default"`
+
+### Import errors on frontend
+**Solution:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
 
 ## 📁 Project Structure
 
 ```
-SuperHireX/
-├── components/
-│   ├── AuthForm.tsx          # Authentication component for login/signup
-│   ├── CandidateCard.tsx     # Candidate profile display component
-│   ├── JobCard.tsx           # Job listing display component
-│   └── SwipeCard.tsx         # Swipeable card wrapper component
-├── services/
-│   ├── authService.ts        # Authentication logic and user profile management
-│   ├── dataService.ts        # Fetch and manage jobs/candidates data
-│   ├── geminiService.ts      # Google Generative AI integration
-│   └── swipeService.ts       # Handle swipe interactions and match logic
-├── lib/
-│   └── supabase.ts           # Supabase client configuration
-├── App.tsx                   # Main application component
-├── types.ts                  # TypeScript interfaces and enums
-├── constants.tsx             # Mock data and constants
-├── index.tsx                 # React DOM render entry point
-├── vite.config.ts            # Vite configuration
-├── tsconfig.json             # TypeScript configuration
-└── package.json              # Project dependencies
+superhirex_complete/
+├── backend/
+│   ├── server.py          # FastAPI app (main)
+│   ├── config.py          # Configuration
+│   ├── database.py        # Supabase client
+│   ├── models.py          # Data models
+│   ├── ai_service.py      # OpenAI integration
+│   ├── file_utils.py      # Resume upload/storage
+│   ├── schema.sql         # Database schema
+│   └── requirements.txt   # Python dependencies
+│
+├── frontend/
+│   ├── App.tsx            # Main React component
+│   ├── index.tsx          # Entry point
+│   ├── types.ts           # TypeScript types
+│   ├── constants.tsx      # Constants
+│   ├── components/
+│   │   ├── AuthForm.tsx       # Login/signup
+│   │   ├── ResumeUpload.tsx   # Resume upload + AI parsing
+│   │   ├── JobCard.tsx        # Job display
+│   │   ├── SwipeCard.tsx      # Swipe container
+│   │   └── ...
+│   ├── services/
+│   │   ├── authService.ts      # Auth logic
+│   │   ├── apiClient.ts        # API client
+│   │   ├── dataService.ts      # Data fetching
+│   │   └── swipeService.ts     # Swipe logic
+│   └── lib/
+│       └── supabase.ts         # Supabase client
+│
+├── sample_jobs.csv        # Example jobs for testing
+├── package.json           # Frontend dependencies
+├── vite.config.ts         # Vite configuration
+└── README.md              # This file
 ```
-
-## 🎯 User Roles
-
-### Job Seeker (SEEKER)
-- Browse available job postings
-- Swipe right to apply to jobs or left to skip
-- Receive notifications when both parties match
-- View comprehensive job details including salary, location, and requirements
-
-### Recruiter (RECRUITER)
-- Browse candidate profiles
-- Swipe right to express interview interest or left to pass
-- Receive notifications when candidates are also interested
-- Access candidate skills, experience, and portfolio information
-
-## 🚦 Getting Started
-
-### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn package manager
-- Supabase account and project credentials
-- Google Generative AI API key
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/SuperHireX.git
-   cd SuperHireX
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   Create a `.env.local` file in the root directory:
-   ```
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   VITE_GEMINI_API_KEY=your_google_generative_ai_key
-   ```
-
-4. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-   The app will open at `http://localhost:5173`
-
-### Build for Production
-```bash
-npm run build
-```
-
-### Preview Production Build
-```bash
-npm run preview
-```
-
-## 🔄 Core Workflows
-
-### Authentication Flow
-1. User selects role (Job Seeker or Recruiter)
-2. User authenticates via AuthForm (signup/login)
-3. User profile is loaded from Supabase
-4. App loads relevant data (jobs or candidates)
-
-### Swiping & Matching
-1. User views card in swipe interface
-2. User swipes left (pass) or right (express interest)
-3. Swipe action is recorded in Supabase via `swipeService`
-4. System checks for mutual interest matches
-5. If matched, notification animates and displays
-
-### Data Flow
-- **Job Seekers**: `dataService.getJobs()` → Display job cards → User swipes
-- **Recruiters**: `dataService.getCandidates()` → Display candidate cards → User swipes
-- **Matching**: `swipeService.recordSwipe()` → Check mutual interest → Trigger notifications
-
-## 🤖 AI Integration
-
-The app integrates Google Generative AI (`geminiService.ts`) to:
-- Provide intelligent job recommendations based on candidate profiles
-- Generate match insights and compatibility scores
-- Power potential smart filtering and scoring features
-
-## 📱 Key Components
-
-### SwipeCard
-- Wraps content in a swipeable container
-- Handles left/right swipe detection
-- Triggers callbacks on swipe completion
-
-### AuthForm
-- Role-specific authentication interface
-- Handles signup and login flows
-- Manages user profile creation
-
-### JobCard
-- Displays job title, company, salary, and requirements
-- Shows job description and company logo
-- Interactive for additional details
-
-### CandidateCard
-- Shows candidate name, title, and experience
-- Displays skills and bio
-- Links to resume or portfolio
-
-## 🔐 Security & Environment
-
-- Credentials are managed through environment variables
-- Supabase provides built-in authentication and authorization
-- App gracefully degrades if backend credentials are missing (Demo Mode)
-- Sensitive data is never committed to version control
-
-## 🎨 UI/UX Features
-
-- **Smooth Animations**: Powered by Framer Motion for card transitions and notifications
-- **Dark Theme**: Professional dark interface with white/colored accents
-- **Real-Time Feedback**: Instant visual feedback on user actions
-- **Responsive Layout**: Adapts seamlessly across device sizes
-- **Match Notifications**: Full-screen match celebration with animations
-
-## 📈 Future Enhancements
-
-- Message inbox for matched parties
-- Advanced filtering and search
-- Profile completion progress tracking
-- Skill-based job recommendations
-- Video profile support
-- Analytics dashboard for recruiters
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues for bug reports and feature suggestions.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 📞 Support
-
-For support and questions, please reach out to the development team or open an issue on GitHub.
 
 ---
 
-**Built with ❤️ for the future of hiring**
+## 🚀 Deployment
+
+### Production Checklist
+- [ ] Change `ADMIN_KEY` to secure random value
+- [ ] Update Supabase RLS policies for production
+- [ ] Enable HTTPS
+- [ ] Set `ENVIRONMENT=production` in backend
+- [ ] Update frontend API URL to production backend
+- [ ] Test all user flows end-to-end
+- [ ] Set up monitoring/logging (CloudWatch, DataDog, etc.)
+- [ ] Test resume parsing with real resumes
+- [ ] Backup database before deploying
+
+### Scaling Recommendations
+- Add Redis for session management
+- Use CDN for frontend (Cloudflare, AWS CloudFront)
+- Load balance backend instances (AWS ELB, nginx)
+- Enable database query caching
+- Monitor AI parsing performance and costs
+
+---
+
+## 📊 Features
+
+### ✅ Current (MVP)
+- Job Seeker signup with email OTP
+- Resume upload (PDF/DOCX)
+- AI-powered resume parsing
+  - Extracts: Skills, Experience, Education, ATS Score
+  - Uses OpenAI GPT via Emergent LLM
+- Job feed with skill-based recommendations
+- Swipe left (pass) / right (apply)
+- Match detection
+- Admin bulk job upload via CSV
+- Existing user detection
+
+### ⏳ Planned (Post-MVP)
+- Recruiter dashboard
+- Job creation by recruiters
+- Direct messaging
+- Saved jobs collection
+- Job alerts/notifications
+- Advanced filtering (salary, location, experience level)
+- Premium AI-powered matching
+- Analytics dashboard
+- Mobile app
+
+---
+
+## 🔐 Security
+
+### Authentication
+- Supabase Email OTP (magic links)
+- JWT tokens with 1-hour expiry
+- Secure cookie storage
+- CSRF protection via Supabase
+
+### Database
+- Row Level Security (RLS) on all tables
+- Users can only view/modify their own data
+- Recruiters isolated by company
+- Admin-only operations require admin key
+
+### Resume Handling
+- Files stored in private Supabase Storage bucket
+- Automatic cleanup of old files
+- No resume data exposed in API responses
+- Parsed data cached (one-time AI cost)
+
+---
+
+## 💡 Key Files to Understand
+
+### Backend
+- **server.py** - All API endpoints defined here
+- **ai_service.py** - Resume parsing logic
+- **schema.sql** - Database structure and RLS policies
+
+### Frontend
+- **App.tsx** - Main app state and routing
+- **AuthForm.tsx** - Login/signup UI
+- **ResumeUpload.tsx** - Resume upload + AI parsing UI
+- **services/authService.ts** - Authentication logic
+
+---
+
+## 📞 Support
+
+### Check Logs
+```bash
+# Backend
+cd backend && python server.py
+
+# Frontend
+npm run dev
+```
+
+### Database Queries
+```sql
+-- Check jobs
+SELECT COUNT(*) FROM jobs WHERE status = 'active';
+
+-- Check user profiles
+SELECT full_name, email, role FROM profiles;
+
+-- Check parsed resumes
+SELECT user_id, ats_score FROM seeker_profiles;
+```
+
+### Common Commands
+```bash
+# Backend health
+curl http://localhost:8001/api/health
+
+# Upload jobs
+curl -X POST http://localhost:8001/api/admin/jobs/bulk-upload \
+  -H "admin-key: admin-key-default" \
+  -F "file=@sample_jobs.csv"
+
+# Check email
+curl -X POST http://localhost:8001/api/check-email \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com"}'
+```
+
+---
+
+## 🎯 Next Steps
+
+1. **Test the MVP**: Follow Quick Start above
+2. **Upload your jobs**: Use your own CSV file
+3. **Invite beta users**: Share `http://localhost:5175`
+4. **Collect feedback**: Focus on job matching quality
+5. **Iterate**: Improve AI parsing and ranking
+6. **Scale**: Add recruiter features when ready
+
+---
+
+## 📝 License
+
+Proprietary - SuperhireX
+
+---
+
+**Last Updated**: February 2, 2026  
+**Version**: 1.0.0 (MVP)  
+**Status**: ✅ Production Ready

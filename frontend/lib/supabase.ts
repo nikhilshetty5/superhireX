@@ -16,11 +16,13 @@ const getEnv = (key: string): string => {
 const supabaseUrl = getEnv('VITE_SUPABASE_URL');
 const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
 
-// Log a warning instead of crashing if variables are missing
-if (!supabaseUrl || !supabaseAnonKey) {
+// Log a warning if variables are missing
+const isValidConfig = supabaseUrl && supabaseAnonKey && !supabaseAnonKey.includes('YOUR_');
+if (!isValidConfig) {
   console.warn(
-    'SUPERHIREX WARNING: Supabase credentials (VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY) are missing in environment. ' +
-    'Real-time database features will be disabled. Demo Mode remains available.'
+    'SUPERHIREX WARNING: Supabase credentials are missing or incomplete in .env file.\n' +
+    'Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env\n' +
+    'Authentication features will be disabled in Demo Mode.'
   );
 }
 
@@ -30,3 +32,6 @@ export const supabase = createClient(
   supabaseUrl || 'https://placeholder-url.supabase.co', 
   supabaseAnonKey || 'placeholder-key'
 );
+
+// Export flag for demo mode
+export const isDemoMode = !isValidConfig;
